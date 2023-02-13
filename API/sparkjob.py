@@ -23,7 +23,7 @@ cfg = (
     # Setting environment variables for executors to use
     .setExecutorEnv(pairs=[("VAR3", "value3"), ("VAR4", "value4")])
     # Setting memory if this setting was not set previously
-    .setIfMissing("spark.executor.memory", "1g")
+    .setIfMissing("spark.executor.memory", "6g")
 )
 
 default_args = {
