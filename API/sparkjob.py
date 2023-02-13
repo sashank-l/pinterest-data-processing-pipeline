@@ -26,15 +26,6 @@ cfg = (
     .setIfMissing("spark.executor.memory", "1g")
 )
 
-s3_client = boto3.client('s3')
-s3 = boto3.resource('s3')
-accessKeyId=os.environ["AWS_ACCESS_KEY_ID"]
-secretAccessKey=os.environ["AWS_SECRET_ACCESS_KEY"]
-cfg.set('spark.jars.packages', 'org.apache.hadoop:hadoop-aws:3.2.0')
-cfg.set('spark.hadoop.fs.s3a.aws.credentials.provider', 'org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider')
-cfg.set('spark.hadoop.fs.s3a.access.key', accessKeyId)
-cfg.set('spark.hadoop.fs.s3a.secret.key', secretAccessKey)
-
 default_args = {
     'owner': 'balany1',
     'depends_on_past': False,
@@ -49,6 +40,19 @@ default_args = {
 
 
 def spark():
+    #configure and set credentials
+    s3_client = boto3.client('s3')
+    session = boto3.Session(profile_name='default')
+    credentials = session.get_credentials()
+    #s3 = boto3.resource('s3')#
+    #my_bucket = s3_client.bucket('pinterest-data-decf2d83-23f1-4044-9aef-dda97e4934b1')
+    accessKeyId=credentials.access_key
+    secretAccessKey=credentials.secret_key
+    cfg.set('spark.jars.packages', 'org.apache.hadoop:hadoop-aws:3.2.0')
+    cfg.set('spark.hadoop.fs.s3a.aws.credentials.provider', 'org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider')
+    cfg.set('spark.hadoop.fs.s3a.access.key', accessKeyId)
+    cfg.set('spark.hadoop.fs.s3a.secret.key', secretAccessKey)
+
     #set Spark Context
     sc = SparkContext(conf=cfg)
 
@@ -57,6 +61,7 @@ def spark():
 
     #read json files from s3 bucket
     df = spark.read.json("s3a://pinterest-data-decf2d83-23f1-4044-9aef-dda97e4934b1/*.json")
+    print(df)
 
     #clean data
     df = df.withColumn('follower_count', f.regexp_replace("follower_count", "User Info Error", "0"))
@@ -72,7 +77,6 @@ def spark():
         #s3_client.download_file('pinterest-data-decf2d83-23f1-4044-9aef-dda97e4934b1', )
 
 
-#df = spark.read.csv
 
 # Getting a single variable
 print(cfg.get("spark.executor.memory"))
