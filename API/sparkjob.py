@@ -11,6 +11,7 @@ from airflow.models import DAG
 from datetime import datetime
 from datetime import timedelta
 from airflow.operators.bash import BashOperator
+from airflow.operators.python import PythonOperator
 from airflow.models import Variable
 from pyspark.sql.functions import col
 
@@ -46,15 +47,21 @@ def find_most_common_categories(df):
 
       df.groupBy('category').count().sort(col('count').desc()).show()
 
-with DAG(dag_id='spark',
+Batch = Batch_Processing()
+file = Batch.create_raw_data_folder()
+df = Batch.spark()
+
+with DAG(dag_id='dag_spark',
          default_args=default_args,
-         schedule_interval='*/0 0 * * *',
+         schedule_interval='09 13 * * *',
          catchup=False,
-         tags=['test']
+         tags=['spark']
          ) as dag:
+    # define task
+    Spark_task = PythonOperator(
+        task_id = 'run_spark_job',
+        python_callable = Batch.spark,
+        )
         
-        Batch = Batch_Processing()
-        file = Batch.create_raw_data_folder()
-        df = Batch.spark()
-        find_max_followers(df)
-        find_most_common_categories(df)
+        
+        
