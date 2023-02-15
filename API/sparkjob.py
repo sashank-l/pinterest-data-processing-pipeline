@@ -28,6 +28,12 @@ default_args = {
     'end_date': datetime(2024, 1, 1),
 }
 
+def create_raw_data_folder(self):
+        '''Creates folder for data to be stored
+        '''
+        if os.path.exists("./raw_data") == False:
+            raw_data = os.mkdir("./raw_data")
+        print('raw_data directory created')
 
 def find_max_followers(df):
       '''
@@ -48,8 +54,6 @@ def find_most_common_categories(df):
       df.groupBy('category').count().sort(col('count').desc()).show()
 
 Batch = Batch_Processing()
-file = Batch.create_raw_data_folder()
-df = Batch.spark()
 
 with DAG(dag_id='dag_spark',
          default_args=default_args,

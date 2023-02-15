@@ -50,12 +50,7 @@ class Batch_Processing:
         cfg.set('spark.hadoop.fs.s3a.secret.key', secretAccessKey)
         self.cfg = cfg
 
-    def create_raw_data_folder(self):
-        '''Creates folder for data to be stored
-        '''
-        if os.path.exists("./raw_data") == False:
-            raw_data = os.mkdir("./raw_data")
-        print('raw_data directory created')
+    
 
 
     def spark(self):
@@ -77,10 +72,12 @@ class Batch_Processing:
         df = df.withColumn('tag_list', f.regexp_replace("tag_list", "N,o, ,T,a,g,s, ,A,v,a,i,l,a,b,l,e", "None"))
 
         #narrow down fields necessary
-        df2 = df.select("category","description","follower_count", "tag_list", "title","unique_id").show()
+        #df2 = df.select("category","description","follower_count", "tag_list", "title","unique_id").show()
 
         return df
     
+    
+
     def Batch_Consumer(self):
 
         s3_client = boto3.client('s3')
@@ -108,5 +105,4 @@ if __name__ == "__main__":
 
     
     Batch = Batch_Processing()
-    Batch.create_raw_data_folder()
     Batch.Batch_Consumer()
