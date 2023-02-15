@@ -1,6 +1,7 @@
 import multiprocessing
 import pyspark
 import json
+from batch_consumer import Batch_Processing
 from pyspark import SparkContext
 from pyspark.sql import SparkSession
 import pyspark.sql.functions as f
@@ -9,24 +10,10 @@ import os
 from airflow.models import DAG
 from datetime import datetime
 from datetime import timedelta
-from airflow.operators.bash_operator import BashOperator
+from airflow.operators.bash import BashOperator
 from airflow.models import Variable
 from pyspark.sql.functions import col
 
-
-cfg = (
-    pyspark.SparkConf()
-    # Setting the master to run locally and with the maximum amount of cpu coresfor multiprocessing.
-    .setMaster(f"local[{multiprocessing.cpu_count()}]")
-    # Setting application name
-    .setAppName("TestApp")
-    # Setting config value via string
-    .set("spark.eventLog.enabled", False)
-    # Setting environment variables for executors to use
-    .setExecutorEnv(pairs=[("VAR3", "value3"), ("VAR4", "value4")])
-    # Setting memory if this setting was not set previously
-    .setIfMissing("spark.executor.memory", "6g")
-)
 
 default_args = {
     'owner': 'balany1',
@@ -41,46 +28,13 @@ default_args = {
 }
 
 
-def spark():
-    #configure and set credentials
-    s3_client = boto3.client('s3')
-    session = boto3.Session(profile_name='default')
-    credentials = session.get_credentials()
-    accessKeyId=credentials.access_key
-    secretAccessKey=credentials.secret_key
-    cfg.set('spark.jars.packages', 'org.apache.hadoop:hadoop-aws:3.2.0')
-    cfg.set('spark.hadoop.fs.s3a.aws.credentials.provider', 'org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider')
-    cfg.set('spark.hadoop.fs.s3a.access.key', accessKeyId)
-    cfg.set('spark.hadoop.fs.s3a.secret.key', secretAccessKey)
-
-    #set Spark Context
-    sc = SparkContext(conf=cfg)
-
-    #start Spark session
-    spark = SparkSession(sc).builder.appName("TestApp").getOrCreate()
-
-    #read json files from s3 bucket
-    df = spark.read.json("s3a://pinterest-data-decf2d83-23f1-4044-9aef-dda97e4934b1/*.json")
-
-    #clean data
-    df = df.withColumn('follower_count', f.regexp_replace("follower_count", "User Info Error", "0"))
-    df = df.withColumn('follower_count', f.regexp_replace("follower_count", "k", "000"))
-    df = df.withColumn('follower_count', f.regexp_replace("follower_count", "M", "000000"))
-    df = df.withColumn('follower_count', f.col("follower_count").cast("Int"))
-    df = df.withColumn('tag_list', f.regexp_replace("tag_list", "N,o, ,T,a,g,s, ,A,v,a,i,l,a,b,l,e", "None"))
-
-    #narrow down fields necessary
-    df2 = df.select("category","description","follower_count", "tag_list", "title","unique_id").show()
-
-    return df
-
 def find_max_followers(df):
       '''
       Args:
       df = the spark dataframe produced from the SparkSession
        '''
       
-      print(df.sort(col('follower_count').desc()).show())
+      df.sort(col('follower_count').desc()).show()
      
 
 def find_most_common_categories(df):
@@ -90,7 +44,7 @@ def find_most_common_categories(df):
       df = the spark dataframe produced from the SparkSession
       '''
 
-      print(df.groupBy('category').count().sort(col('count').desc()).show())
+      df.groupBy('category').count().sort(col('count').desc()).show()
 
 with DAG(dag_id='spark',
          default_args=default_args,
@@ -98,6 +52,9 @@ with DAG(dag_id='spark',
          catchup=False,
          tags=['test']
          ) as dag:
-        df = spark()
+        
+        Batch = Batch_Processing()
+        file = Batch.create_raw_data_folder()
+        df = Batch.spark()
         find_max_followers(df)
         find_most_common_categories(df)
