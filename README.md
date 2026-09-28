@@ -204,3 +204,4 @@ python streaming_consumer.py
 
 - **Credentials Management**: Avoid hardcoding AWS credentials and database passwords in source code. Use environment variables or AWS Secrets Manager / `.env` files via `python-dotenv`.
 - **Checkpointing**: In production, supply a `.option("checkpointLocation", "...")` in Structured Streaming to ensure fault tolerance and exactly-once semantics.
+
